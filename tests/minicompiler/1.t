@@ -40,8 +40,8 @@ $ echo 'int main(){return;}' > program.c
     return acc;
   }
   GC statistics
-  Total allocations: 33904(words)
-  Currently allocated: 33904(words)
+  Total allocations: 33918(words)
+  Currently allocated: 33918(words)
   Current bank: 0
 
 
