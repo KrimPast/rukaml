@@ -300,11 +300,23 @@ let list_iter_revindex ~f xs =
 let emit_comment ppf = Format.kasprintf (emit comment) ppf
 
 (** Functions [grow_stack] and [shrink_stack] take words count *)
+let emit_save_min_sp () =
+  let label_greater = sprintf "min_sp_value_%d" (gensym ()) in
+  let label_fin = sprintf "min_sp_value_fin_%d" (gensym ()) in
+  emit lla t0 "min_sp_value";
+  emit ld t1 (ROffset(t0, 0));
+  emit blt sp t1 label_greater;
+  emit j label_fin;
+  emit label label_greater;
+  emit sd sp (ROffset(t0, 0));
+  emit label label_fin;
+;;
 let grow_stack k n =
   (* log "Grow stack for %d words" n; *)
   assert (n >= 0);
   assert (n * wordsize () mod 16 = 0);
-  addi k sp sp (-n * wordsize ())
+  addi k sp sp (-n * wordsize ());
+  emit_save_min_sp();
 ;;
 
 let shrink_stack k n =
@@ -356,7 +368,7 @@ let allocate_locals input_anf : (now:unit -> unit) * _ * _ =
   let ra_offset, sloc =
     (* emit comment (sprintf "%s" __FUNCTION__);
     emit comment (sprintf "keys = %s" (Addr_of_local.keys ()));
-    emit comment (sprintf "last_pos = %d" !Addr_of_local.last_pos);
+    emit comment (sprintf "last_pos = %d" !Addr_of`_local.last_pos);
     emit comment (sprintf "count = %d" count); *)
     let clotc = calc_sloc (count + 1) in
     emit grow_stack clotc;
@@ -1718,6 +1730,10 @@ let codegen ?(wrap_main_into_start = true) anf file =
         emit mv a2 a1 ~comm:"argv";
         emit mv a1 a0 ~comm:"argc";
         emit mv a0 sp ~comm:"Stack pointer is first";
+        emit lla t0 "start_sp_value";
+        emit sd sp (ROffset(t0, 0));
+        emit lla t0 "min_sp_value";
+        emit sd sp (ROffset(t0, 0));
         emit call "rukaml_initialize";
         emit call "rukaml_initilize_string_constants";
         emit call "rukaml_init_global_immediates";
@@ -1726,6 +1742,25 @@ let codegen ?(wrap_main_into_start = true) anf file =
         Toplevel.extend name ~kind:Main;
         log "\nGenerating function main";
         Opts.disable_locally TailCall (fun () -> generate_body is_toplevel expr);
+
+        emit lla a0 "start_sp_value_str";
+        emit lla a1 "start_sp_value";
+        emit ld a1 (ROffset(a1, 0));
+        emit call "printf";
+        
+        emit lla a0 "min_sp_value_str";
+        emit lla a1 "min_sp_value";
+        emit ld a1 (ROffset(a1, 0));
+        emit call "printf";
+
+        emit lla a0 "difference_str";
+        emit lla t0 "start_sp_value";
+        emit ld t0 (ROffset(t0, 0));
+        emit lla t1 "min_sp_value";
+        emit ld t1 (ROffset(t1, 0));
+        emit sub a1 t0 t1;
+        emit call "printf";
+
         print_epilogue ppf name.Ident.hum_name;
         Machine.flush_queue ppf
       | `Immediate (name, expr) -> emit_global_constant is_toplevel ppf name expr

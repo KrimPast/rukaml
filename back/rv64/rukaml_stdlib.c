@@ -100,6 +100,11 @@ const size_t rukaml_word_size = 4;
 static bool is_applyN_call = false;
 static void* applyN_args = NULL;
 
+uint64_t start_sp_value, min_sp_value;
+char start_sp_value_str[] = "start_sp_value: %lu\n";
+char min_sp_value_str[]   = "min_sp_value: %lu\n";
+char difference_str[]     = "difference: %lu\n";
+
 #define Set_field(dest, idx, newval) *((value *)dest + idx) = newval
 #define Field(dest, idx) *((value *)dest + idx)
 #endif
